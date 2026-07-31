@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Login() {
   const { login } = useAuth();
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +16,10 @@ export default function Login() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    try { await login(username, password); }
+    try {
+      await login(username, password);
+      navigate('/');
+    }
     catch { setError('Неверный логин или пароль'); }
     finally { setLoading(false); }
   };
