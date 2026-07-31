@@ -12,6 +12,5 @@ function Stub({ icon, title }: { icon: string; title: string }) {
 }
 
 export function Home() { return <Stub icon="🏠" title="Главная" />; }
-export function Contractors() { return <Stub icon="🏗️" title="Подрядчики" />; }
 export function Acts() { return <Stub icon="📋" title="Акты" />; }
 export function Specifications() { return <Stub icon="📑" title="Спецификации" />; }
