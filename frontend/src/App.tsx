@@ -4,7 +4,9 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
-import { Home, TmcPage, Contractors, Acts, Specifications } from './pages/Stubs';
+import TmcPage from './pages/TmcPage';
+import MotherTmcDetail from './pages/MotherTmcDetail';
+import { Home, Contractors, Acts, Specifications } from './pages/Stubs';
 import NotFound from './pages/NotFound';
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -23,6 +25,7 @@ function AppRoutes() {
           <Route element={<Protected><Layout /></Protected>}>
             <Route path="/" element={<Home />} />
             <Route path="/tmc" element={<TmcPage />} />
+            <Route path="/tmc/mother/:id" element={<MotherTmcDetail />} />
             <Route path="/contractors" element={<Contractors />} />
             <Route path="/acts" element={<Acts />} />
             <Route path="/specifications" element={<Specifications />} />
