@@ -17,7 +17,7 @@ type Tab = 'territories' | 'warehouses';
 
 export default function WarehousesPage() {
   const { theme } = useTheme();
-  const [tab, setTab] = useState<Tab>('territories');
+  const [tab, setTab] = useState<Tab>('warehouses');
 
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -155,8 +155,8 @@ export default function WarehousesPage() {
       {error && <div style={s.error}>{error}</div>}
 
       <div style={s.tabs}>
-        <button style={s.tab(tab === 'territories')} onClick={() => setTab('territories')}>Территории</button>
         <button style={s.tab(tab === 'warehouses')} onClick={() => setTab('warehouses')}>Склады</button>
+        <button style={s.tab(tab === 'territories')} onClick={() => setTab('territories')}>Территории</button>
       </div>
 
       {tab === 'territories' && (

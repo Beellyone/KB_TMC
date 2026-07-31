@@ -33,7 +33,7 @@ const emptyExecutorForm = { warehouse_id: 0, contragent_id: 0, emails: '', agree
 
 export default function ContractorsPage() {
   const { theme } = useTheme();
-  const [tab, setTab] = useState<Tab>('contragents');
+  const [tab, setTab] = useState<Tab>('executors');
 
   const [contragents, setContragents] = useState<Contragent[]>([]);
   const [executors, setExecutors] = useState<Executor[]>([]);
@@ -254,8 +254,8 @@ export default function ContractorsPage() {
       {error && <div style={s.error}>{error}</div>}
 
       <div style={s.tabs}>
-        <button style={s.tab(tab === 'contragents')} onClick={() => setTab('contragents')}>Контрагенты</button>
         <button style={s.tab(tab === 'executors')} onClick={() => setTab('executors')}>Исполнители</button>
+        <button style={s.tab(tab === 'contragents')} onClick={() => setTab('contragents')}>Контрагенты</button>
       </div>
 
       {tab === 'contragents' && (

@@ -20,7 +20,7 @@ type Tab = 'categories' | 'mothers';
 export default function TmcPage() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('categories');
+  const [tab, setTab] = useState<Tab>('mothers');
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [mothers, setMothers] = useState<MotherTmc[]>([]);
@@ -159,8 +159,8 @@ export default function TmcPage() {
       {error && <div style={s.error}>{error}</div>}
 
       <div style={s.tabs}>
-        <button style={s.tab(tab === 'categories')} onClick={() => setTab('categories')}>Категории</button>
         <button style={s.tab(tab === 'mothers')} onClick={() => setTab('mothers')}>Материнские ТМЦ</button>
+        <button style={s.tab(tab === 'categories')} onClick={() => setTab('categories')}>Категории</button>
       </div>
 
       {tab === 'categories' && (
