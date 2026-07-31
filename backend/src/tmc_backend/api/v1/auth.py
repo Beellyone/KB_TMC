@@ -8,7 +8,7 @@ from ...auth.dependencies import get_current_user
 from ...auth.jwt import create_access_token, create_refresh_token, decode_token
 from ...database import get_db
 from ...models.user import User
-from ...schemas.auth import LoginRequest, RefreshRequest, TokenResponse
+from ...schemas.auth import ChangePasswordRequest, LoginRequest, RefreshRequest, TokenResponse
 from ...schemas.user import UserResponse
 
 log = structlog.get_logger()
@@ -59,3 +59,16 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not bcrypt.checkpw(body.old_password.encode(), current_user.password_hash.encode()):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Неверный текущий пароль")
+    current_user.password_hash = bcrypt.hashpw(body.new_password.encode(), bcrypt.gensalt()).decode()
+    await db.commit()
+    return {"detail": "Пароль изменён"}
