@@ -6,6 +6,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.v1.router import api_router
 from .config import settings
 from .logging import setup_logging
 
@@ -34,6 +35,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(api_router)
 
 
 @app.middleware("http")
