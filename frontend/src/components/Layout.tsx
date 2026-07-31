@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 
 const NAV = [
   { path: '/tmc', label: 'ТМЦ', icon: '📦' },
+  { path: '/warehouses', label: 'Склады', icon: '🏭' },
   { path: '/contractors', label: 'Подрядчики', icon: '🏗️' },
   { path: '/acts', label: 'Акты', icon: '📋' },
   { path: '/specifications', label: 'Спецификации', icon: '📑' },
