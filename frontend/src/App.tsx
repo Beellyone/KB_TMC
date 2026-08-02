@@ -8,7 +8,10 @@ import TmcPage from './pages/TmcPage';
 import MotherTmcDetail from './pages/MotherTmcDetail';
 import WarehousesPage from './pages/WarehousesPage';
 import ContractorsPage from './pages/ContractorsPage';
-import { Home, Acts, Specifications } from './pages/Stubs';
+import SpecificationsPage from './pages/SpecificationsPage';
+import SpecificationDetail from './pages/SpecificationDetail';
+import SpecMotherTmcDetail from './pages/SpecMotherTmcDetail';
+import { Home, Acts } from './pages/Stubs';
 import NotFound from './pages/NotFound';
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -31,7 +34,9 @@ function AppRoutes() {
             <Route path="/warehouses" element={<WarehousesPage />} />
             <Route path="/contractors" element={<ContractorsPage />} />
             <Route path="/acts" element={<Acts />} />
-            <Route path="/specifications" element={<Specifications />} />
+            <Route path="/specifications" element={<SpecificationsPage />} />
+            <Route path="/specifications/:id" element={<SpecificationDetail />} />
+            <Route path="/specifications/:id/mother-tmc/:smtId" element={<SpecMotherTmcDetail />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<NotFound />} />
