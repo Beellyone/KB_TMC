@@ -23,6 +23,9 @@ class MotherTmc(TimestampMixin, Base):
 
     category: Mapped[TmcCategory] = relationship(back_populates="mother_tmcs")
     items: Mapped[list["Tmc"]] = relationship(back_populates="mother_tmc", cascade="all, delete-orphan")
+    breakdowns: Mapped[list["MotherTmcBreakdown"]] = relationship(
+        back_populates="mother_tmc", cascade="all, delete-orphan",
+    )
 
 
 class Tmc(TimestampMixin, Base):
@@ -34,3 +37,14 @@ class Tmc(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255))
 
     mother_tmc: Mapped[MotherTmc] = relationship(back_populates="items")
+
+
+class MotherTmcBreakdown(TimestampMixin, Base):
+    __tablename__ = "mother_tmc_breakdowns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    mother_tmc_id: Mapped[int] = mapped_column(ForeignKey("mother_tmcs.id", ondelete="CASCADE"))
+    code: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(255))
+
+    mother_tmc: Mapped[MotherTmc] = relationship(back_populates="breakdowns")

@@ -9,9 +9,12 @@ from sqlalchemy.orm import selectinload
 from ...auth.dependencies import get_current_user
 from ...database import get_db
 from ...models.audit_log import AuditLog
-from ...models.tmc import MotherTmc, Tmc, TmcCategory
+from ...models.tmc import MotherTmc, MotherTmcBreakdown, Tmc, TmcCategory
 from ...models.user import User
 from ...schemas.tmc import (
+    BreakdownCreate,
+    BreakdownResponse,
+    BreakdownUpdate,
     MotherTmcCreate,
     MotherTmcDetailResponse,
     MotherTmcResponse,
@@ -282,4 +285,76 @@ async def delete_item(
         raise HTTPException(status_code=404, detail="ТМЦ не найден")
     await _audit(db, user, "delete", "tmc", item.id, {"code": item.code, "name": item.name})
     await db.delete(item)
+    await db.commit()
+
+
+# ── Breakdowns ──────────────────────────────────────────────
+
+
+@router.get("/mothers/{mother_id}/breakdowns", response_model=list[BreakdownResponse])
+async def list_breakdowns(mother_id: int, db: AsyncSession = Depends(get_db)):
+    if not await db.get(MotherTmc, mother_id):
+        raise HTTPException(status_code=404, detail="Материнский ТМЦ не найден")
+    result = await db.execute(
+        select(MotherTmcBreakdown)
+        .where(MotherTmcBreakdown.mother_tmc_id == mother_id)
+        .order_by(MotherTmcBreakdown.code)
+    )
+    return result.scalars().all()
+
+
+@router.post("/breakdowns", response_model=BreakdownResponse, status_code=status.HTTP_201_CREATED)
+async def create_breakdown(
+    body: BreakdownCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not await db.get(MotherTmc, body.mother_tmc_id):
+        raise HTTPException(status_code=400, detail="Материнский ТМЦ не найден")
+    bd = MotherTmcBreakdown(mother_tmc_id=body.mother_tmc_id, code=body.code, name=body.name)
+    db.add(bd)
+    await db.flush()
+    await _audit(db, user, "create", "breakdown", bd.id, {
+        "code": bd.code, "name": bd.name, "mother_tmc_id": bd.mother_tmc_id,
+    })
+    await db.commit()
+    await db.refresh(bd)
+    return bd
+
+
+@router.patch("/breakdowns/{bd_id}", response_model=BreakdownResponse)
+async def update_breakdown(
+    bd_id: int,
+    body: BreakdownUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bd = await db.get(MotherTmcBreakdown, bd_id)
+    if not bd:
+        raise HTTPException(status_code=404, detail="Поломка не найдена")
+    changes = {}
+    if body.code is not None and body.code != bd.code:
+        changes["code"] = {"old": bd.code, "new": body.code}
+        bd.code = body.code
+    if body.name is not None and body.name != bd.name:
+        changes["name"] = {"old": bd.name, "new": body.name}
+        bd.name = body.name
+    if changes:
+        await _audit(db, user, "update", "breakdown", bd.id, changes)
+        await db.commit()
+        await db.refresh(bd)
+    return bd
+
+
+@router.delete("/breakdowns/{bd_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_breakdown(
+    bd_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bd = await db.get(MotherTmcBreakdown, bd_id)
+    if not bd:
+        raise HTTPException(status_code=404, detail="Поломка не найдена")
+    await _audit(db, user, "delete", "breakdown", bd.id, {"code": bd.code, "name": bd.name})
+    await db.delete(bd)
     await db.commit()
