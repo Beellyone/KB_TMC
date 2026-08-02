@@ -25,6 +25,20 @@ interface Breakdown {
   name: string;
 }
 
+interface CategoryBreakdownItem {
+  id: number;
+  code: string;
+  name: string;
+  source: string;
+}
+
+interface OwnBreakdownItem {
+  id: number;
+  code: string;
+  name: string;
+  source: string;
+}
+
 export default function MotherTmcDetail() {
   const { id } = useParams<{ id: string }>();
   const { theme } = useTheme();
@@ -33,6 +47,7 @@ export default function MotherTmcDetail() {
   const [mother, setMother] = useState<MotherTmcDetail | null>(null);
   const [items, setItems] = useState<TmcItem[]>([]);
   const [breakdowns, setBreakdowns] = useState<Breakdown[]>([]);
+  const [catBreakdowns, setCatBreakdowns] = useState<CategoryBreakdownItem[]>([]);
   const [form, setForm] = useState({ code: '', name: '' });
   const [editItem, setEditItem] = useState<TmcItem | null>(null);
   const [editForm, setEditForm] = useState({ code: '', name: '' });
@@ -43,14 +58,15 @@ export default function MotherTmcDetail() {
 
   const load = useCallback(async () => {
     if (!id) return;
-    const [m, i, b] = await Promise.all([
+    const [m, i, allBd] = await Promise.all([
       api.get<MotherTmcDetail>(`/tmc/mothers/${id}`),
       api.get<TmcItem[]>(`/tmc/mothers/${id}/items`),
-      api.get<Breakdown[]>(`/tmc/mothers/${id}/breakdowns`),
+      api.get<{ category_breakdowns: CategoryBreakdownItem[]; own_breakdowns: OwnBreakdownItem[] }>(`/tmc/mothers/${id}/all-breakdowns`),
     ]);
     setMother(m);
     setItems(i);
-    setBreakdowns(b);
+    setCatBreakdowns(allBd.category_breakdowns);
+    setBreakdowns(allBd.own_breakdowns.map(b => ({ ...b, mother_tmc_id: Number(id) })));
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -220,8 +236,30 @@ export default function MotherTmcDetail() {
         </table>
       </div>
 
+      {catBreakdowns.length > 0 && (
+        <div style={s.card}>
+          <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>📋 Поломки категории <span style={{ fontSize: 12, color: theme.textSecondary, fontWeight: 400 }}>(общие для {mother.category.name})</span></h3>
+          <table style={s.table}>
+            <thead>
+              <tr>
+                <th style={s.th}>Код</th>
+                <th style={s.th}>Наименование</th>
+              </tr>
+            </thead>
+            <tbody>
+              {catBreakdowns.map(bd => (
+                <tr key={bd.id}>
+                  <td style={s.td}>{bd.code}</td>
+                  <td style={s.td}>{bd.name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div style={s.card}>
-        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>🔧 Возможные поломки</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: 16 }}>🔧 Специфичные поломки</h3>
 
         <form onSubmit={addBreakdown} style={s.form}>
           <div>

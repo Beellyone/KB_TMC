@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type FormEvent } from 'react';
+import React, { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
@@ -9,6 +9,13 @@ interface Category {
 }
 
 interface MotherTmc {
+  id: number;
+  category_id: number;
+  code: string;
+  name: string;
+}
+
+interface CategoryBreakdown {
   id: number;
   category_id: number;
   code: string;
@@ -36,6 +43,12 @@ export default function TmcPage() {
 
   const [error, setError] = useState('');
 
+  const [selectedCat, setSelectedCat] = useState<number | null>(null);
+  const [catBreakdowns, setCatBreakdowns] = useState<CategoryBreakdown[]>([]);
+  const [bdForm, setBdForm] = useState({ code: '', name: '' });
+  const [editBd, setEditBd] = useState<CategoryBreakdown | null>(null);
+  const [editBdForm, setEditBdForm] = useState({ code: '', name: '' });
+
   const loadCategories = useCallback(async () => {
     const data = await api.get<Category[]>('/tmc/categories');
     setCategories(data);
@@ -51,6 +64,56 @@ export default function TmcPage() {
   useEffect(() => { loadMothers(); }, [loadMothers]);
 
   const catNameById = (id: number) => categories.find(c => c.id === id)?.name || '—';
+
+  // ── Category Breakdowns ──
+
+  const loadCatBreakdowns = async (catId: number) => {
+    const data = await api.get<CategoryBreakdown[]>(`/tmc/categories/${catId}/breakdowns`);
+    setCatBreakdowns(data);
+  };
+
+  const toggleCatBreakdowns = async (catId: number) => {
+    if (selectedCat === catId) { setSelectedCat(null); return; }
+    setSelectedCat(catId);
+    await loadCatBreakdowns(catId);
+  };
+
+  const addCatBreakdown = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!selectedCat) return;
+    setError('');
+    try {
+      await api.post('/tmc/category-breakdowns', { category_id: selectedCat, ...bdForm });
+      setBdForm({ code: '', name: '' });
+      await loadCatBreakdowns(selectedCat);
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Ошибка'); }
+  };
+
+  const startEditBd = (bd: CategoryBreakdown) => {
+    setEditBd(bd);
+    setEditBdForm({ code: bd.code, name: bd.name });
+  };
+
+  const saveEditBd = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editBd || !selectedCat) return;
+    setError('');
+    try {
+      await api.patch(`/tmc/category-breakdowns/${editBd.id}`, editBdForm);
+      setEditBd(null);
+      await loadCatBreakdowns(selectedCat);
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Ошибка'); }
+  };
+
+  const deleteCatBreakdown = async (bdId: number) => {
+    if (!confirm('Удалить шаблон поломки?')) return;
+    if (!selectedCat) return;
+    setError('');
+    try {
+      await api.delete(`/tmc/category-breakdowns/${bdId}`);
+      await loadCatBreakdowns(selectedCat);
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Ошибка'); }
+  };
 
   // ── Category CRUD ──
 
@@ -184,26 +247,90 @@ export default function TmcPage() {
             </thead>
             <tbody>
               {categories.map(cat => (
-                <tr key={cat.id}>
-                  <td style={s.td}>{cat.id}</td>
-                  <td style={s.td}>
-                    {editCat?.id === cat.id ? (
-                      <form onSubmit={saveEditCat} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input value={editCatName} onChange={e => setEditCatName(e.target.value)} required style={{ ...s.input, width: 200 }} />
-                        <button type="submit" style={s.btnSecondary}>Сохранить</button>
-                        <button type="button" style={s.btnSecondary} onClick={() => setEditCat(null)}>Отмена</button>
-                      </form>
-                    ) : cat.name}
-                  </td>
-                  <td style={{ ...s.td, textAlign: 'right' }}>
-                    {editCat?.id !== cat.id && (
-                      <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                        <button style={s.btnSecondary} onClick={() => startEditCat(cat)}>Изменить</button>
-                        <button style={s.btnDanger} onClick={() => deleteCategory(cat.id)}>Удалить</button>
-                      </span>
-                    )}
-                  </td>
-                </tr>
+                <React.Fragment key={cat.id}>
+                  <tr>
+                    <td style={s.td}>{cat.id}</td>
+                    <td style={s.td}>
+                      {editCat?.id === cat.id ? (
+                        <form onSubmit={saveEditCat} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <input value={editCatName} onChange={e => setEditCatName(e.target.value)} required style={{ ...s.input, width: 200 }} />
+                          <button type="submit" style={s.btnSecondary}>Сохранить</button>
+                          <button type="button" style={s.btnSecondary} onClick={() => setEditCat(null)}>Отмена</button>
+                        </form>
+                      ) : cat.name}
+                    </td>
+                    <td style={{ ...s.td, textAlign: 'right' }}>
+                      {editCat?.id !== cat.id && (
+                        <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button style={s.btnSecondary} onClick={() => toggleCatBreakdowns(cat.id)}>
+                            🔧 Поломки {selectedCat === cat.id ? '▲' : '▼'}
+                          </button>
+                          <button style={s.btnSecondary} onClick={() => startEditCat(cat)}>Изменить</button>
+                          <button style={s.btnDanger} onClick={() => deleteCategory(cat.id)}>Удалить</button>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                  {selectedCat === cat.id && (
+                    <tr>
+                      <td colSpan={3} style={{ ...s.td, background: theme.bg, padding: 20 }}>
+                        <h4 style={{ margin: '0 0 12px', fontSize: 14 }}>Шаблоны поломок — {cat.name}</h4>
+                        <form onSubmit={addCatBreakdown} style={s.form}>
+                          <div>
+                            <span style={s.label}>Код</span>
+                            <input value={bdForm.code} onChange={e => setBdForm(f => ({ ...f, code: e.target.value }))} required placeholder="PR-0" style={{ ...s.input, width: 100 }} />
+                          </div>
+                          <div>
+                            <span style={s.label}>Наименование</span>
+                            <input value={bdForm.name} onChange={e => setBdForm(f => ({ ...f, name: e.target.value }))} required placeholder="Диагностика" style={{ ...s.input, width: 200 }} />
+                          </div>
+                          <button type="submit" style={s.btn}>Добавить</button>
+                        </form>
+                        <table style={s.table}>
+                          <thead>
+                            <tr>
+                              <th style={s.th}>Код</th>
+                              <th style={s.th}>Наименование</th>
+                              <th style={{ ...s.th, textAlign: 'right' }}>Действия</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {catBreakdowns.map(bd => (
+                              <tr key={bd.id}>
+                                <td style={s.td}>
+                                  {editBd?.id === bd.id ? (
+                                    <input value={editBdForm.code} onChange={e => setEditBdForm(f => ({ ...f, code: e.target.value }))} required style={{ ...s.input, width: 80 }} />
+                                  ) : bd.code}
+                                </td>
+                                <td style={s.td}>
+                                  {editBd?.id === bd.id ? (
+                                    <input value={editBdForm.name} onChange={e => setEditBdForm(f => ({ ...f, name: e.target.value }))} required style={{ ...s.input, width: 180 }} />
+                                  ) : bd.name}
+                                </td>
+                                <td style={{ ...s.td, textAlign: 'right' }}>
+                                  {editBd?.id === bd.id ? (
+                                    <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                      <button style={s.btnSecondary} onClick={saveEditBd}>Сохранить</button>
+                                      <button style={s.btnSecondary} onClick={() => setEditBd(null)}>Отмена</button>
+                                    </span>
+                                  ) : (
+                                    <span style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                      <button style={s.btnSecondary} onClick={() => startEditBd(bd)}>Изменить</button>
+                                      <button style={s.btnDanger} onClick={() => deleteCatBreakdown(bd.id)}>Удалить</button>
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {catBreakdowns.length === 0 && (
+                              <tr><td style={{ ...s.td, color: theme.textSecondary, textAlign: 'center' }} colSpan={3}>Нет шаблонов</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
               {categories.length === 0 && (
                 <tr><td style={{ ...s.td, color: theme.textSecondary, textAlign: 'center' }} colSpan={3}>Нет категорий</td></tr>

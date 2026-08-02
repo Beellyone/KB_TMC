@@ -9,12 +9,15 @@ from sqlalchemy.orm import selectinload
 from ...auth.dependencies import get_current_user
 from ...database import get_db
 from ...models.audit_log import AuditLog
-from ...models.tmc import MotherTmc, MotherTmcBreakdown, Tmc, TmcCategory
+from ...models.tmc import CategoryBreakdown, MotherTmc, MotherTmcBreakdown, Tmc, TmcCategory
 from ...models.user import User
 from ...schemas.tmc import (
     BreakdownCreate,
     BreakdownResponse,
     BreakdownUpdate,
+    CategoryBreakdownCreate,
+    CategoryBreakdownResponse,
+    CategoryBreakdownUpdate,
     MotherTmcCreate,
     MotherTmcDetailResponse,
     MotherTmcResponse,
@@ -358,3 +361,107 @@ async def delete_breakdown(
     await _audit(db, user, "delete", "breakdown", bd.id, {"code": bd.code, "name": bd.name})
     await db.delete(bd)
     await db.commit()
+
+
+# ── Category Breakdowns (templates) ─────────────────────────
+
+
+@router.get("/categories/{cat_id}/breakdowns", response_model=list[CategoryBreakdownResponse])
+async def list_category_breakdowns(cat_id: int, db: AsyncSession = Depends(get_db)):
+    if not await db.get(TmcCategory, cat_id):
+        raise HTTPException(status_code=404, detail="Категория не найдена")
+    result = await db.execute(
+        select(CategoryBreakdown)
+        .where(CategoryBreakdown.category_id == cat_id)
+        .order_by(CategoryBreakdown.code)
+    )
+    return result.scalars().all()
+
+
+@router.post("/category-breakdowns", response_model=CategoryBreakdownResponse, status_code=status.HTTP_201_CREATED)
+async def create_category_breakdown(
+    body: CategoryBreakdownCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not await db.get(TmcCategory, body.category_id):
+        raise HTTPException(status_code=400, detail="Категория не найдена")
+    cbd = CategoryBreakdown(category_id=body.category_id, code=body.code, name=body.name)
+    db.add(cbd)
+    await db.flush()
+    await _audit(db, user, "create", "category_breakdown", cbd.id, {
+        "code": cbd.code, "name": cbd.name, "category_id": cbd.category_id,
+    })
+    await db.commit()
+    await db.refresh(cbd)
+    return cbd
+
+
+@router.patch("/category-breakdowns/{cbd_id}", response_model=CategoryBreakdownResponse)
+async def update_category_breakdown(
+    cbd_id: int,
+    body: CategoryBreakdownUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    cbd = await db.get(CategoryBreakdown, cbd_id)
+    if not cbd:
+        raise HTTPException(status_code=404, detail="Шаблон поломки не найден")
+    changes = {}
+    if body.code is not None and body.code != cbd.code:
+        changes["code"] = {"old": cbd.code, "new": body.code}
+        cbd.code = body.code
+    if body.name is not None and body.name != cbd.name:
+        changes["name"] = {"old": cbd.name, "new": body.name}
+        cbd.name = body.name
+    if changes:
+        await _audit(db, user, "update", "category_breakdown", cbd.id, changes)
+        await db.commit()
+        await db.refresh(cbd)
+    return cbd
+
+
+@router.delete("/category-breakdowns/{cbd_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_category_breakdown(
+    cbd_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    cbd = await db.get(CategoryBreakdown, cbd_id)
+    if not cbd:
+        raise HTTPException(status_code=404, detail="Шаблон поломки не найден")
+    await _audit(db, user, "delete", "category_breakdown", cbd.id, {
+        "code": cbd.code, "name": cbd.name,
+    })
+    await db.delete(cbd)
+    await db.commit()
+
+
+# ── All breakdowns for a mother TMC (category + own) ────────
+
+
+@router.get("/mothers/{mother_id}/all-breakdowns")
+async def list_all_breakdowns(mother_id: int, db: AsyncSession = Depends(get_db)):
+    mother = await db.get(MotherTmc, mother_id)
+    if not mother:
+        raise HTTPException(status_code=404, detail="Материнский ТМЦ не найден")
+    cat_result = await db.execute(
+        select(CategoryBreakdown)
+        .where(CategoryBreakdown.category_id == mother.category_id)
+        .order_by(CategoryBreakdown.code)
+    )
+    own_result = await db.execute(
+        select(MotherTmcBreakdown)
+        .where(MotherTmcBreakdown.mother_tmc_id == mother_id)
+        .order_by(MotherTmcBreakdown.code)
+    )
+    return {
+        "category_breakdowns": [
+            {"id": b.id, "code": b.code, "name": b.name, "source": "category"}
+            for b in cat_result.scalars().all()
+        ],
+        "own_breakdowns": [
+            {"id": b.id, "code": b.code, "name": b.name, "source": "own"}
+            for b in own_result.scalars().all()
+        ],
+    }
