@@ -11,7 +11,9 @@ import ContractorsPage from './pages/ContractorsPage';
 import SpecificationsPage from './pages/SpecificationsPage';
 import SpecificationDetail from './pages/SpecificationDetail';
 import SpecMotherTmcDetail from './pages/SpecMotherTmcDetail';
-import { Home, Acts } from './pages/Stubs';
+import ActsPage from './pages/ActsPage';
+import ActDetailPage from './pages/ActDetailPage';
+import { Home } from './pages/Stubs';
 import NotFound from './pages/NotFound';
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -33,7 +35,8 @@ function AppRoutes() {
             <Route path="/tmc/mother/:id" element={<MotherTmcDetail />} />
             <Route path="/warehouses" element={<WarehousesPage />} />
             <Route path="/contractors" element={<ContractorsPage />} />
-            <Route path="/acts" element={<Acts />} />
+            <Route path="/acts" element={<ActsPage />} />
+            <Route path="/acts/:id" element={<ActDetailPage />} />
             <Route path="/specifications" element={<SpecificationsPage />} />
             <Route path="/specifications/:id" element={<SpecificationDetail />} />
             <Route path="/specifications/:id/mother-tmc/:smtId" element={<SpecMotherTmcDetail />} />
